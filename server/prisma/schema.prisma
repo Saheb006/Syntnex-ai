@@ -7,27 +7,33 @@ datasource db {
 }
 
 
-// =========================
-// USER & AUTHENTICATION
-// =========================
+// =====================================================
+// USER & GITHUB AUTHENTICATION
+// =====================================================
 
 model User {
   id        String   @id @default(cuid())
-  name      String
-  email     String?  @unique
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  accounts Account[]
-  projects Project[]
-  tasks    Task[]
+  accounts     Account[]
+  repositories Repository[]
+  projects     Project[]
+  tasks        Task[]
 }
+
+
+// =====================================================
+// GITHUB ACCOUNT
+// =====================================================
 
 model Account {
   id                String   @id @default(cuid())
+
   provider          String
   providerAccountId String
 
+  // GitHub authorization credentials
   accessToken       String?
   refreshToken      String?
   expiresAt         DateTime?
@@ -39,15 +45,45 @@ model Account {
   user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
+  @@index([userId])
 }
 
 
-// =========================
+// =====================================================
+// GITHUB REPOSITORY
+// =====================================================
+
+model Repository {
+  id            String   @id @default(cuid())
+
+  // GitHub repository information
+  githubId      String   @unique
+  name          String
+  fullName      String
+  url           String
+  defaultBranch String   @default("main")
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Repository owner
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  tasks         Task[]
+  pullRequests  PullRequest[]
+
+  @@index([userId])
+}
+
+
+// =====================================================
 // PROJECT
-// =========================
+// =====================================================
 
 model Project {
   id          String   @id @default(cuid())
+
   name        String
   description String?
 
@@ -57,42 +93,19 @@ model Project {
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  repositories Repository[]
-  tasks        Task[]
+  tasks       Task[]
+
+  @@index([userId])
 }
 
 
-// =========================
-// GITHUB REPOSITORY
-// =========================
-
-model Repository {
-  id            String   @id @default(cuid())
-  name          String
-  fullName      String
-  githubId      String   @unique
-  url           String
-  defaultBranch String   @default("main")
-
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  projectId     String
-  project       Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-
-  tasks         Task[]
-  pullRequests  PullRequest[]
-
-  @@unique([projectId, fullName])
-}
-
-
-// =========================
+// =====================================================
 // TASK
-// =========================
+// =====================================================
 
 model Task {
   id           String       @id @default(cuid())
+
   title        String
   description  String?
 
@@ -102,27 +115,40 @@ model Task {
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
+  // User who created the task
   userId       String
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  // Syntnex project
   projectId    String
   project      Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
+  // GitHub repository being modified
   repositoryId String
   repository   Repository   @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
 
   agentRuns    AgentRun[]
   pullRequests PullRequest[]
+
+  @@index([userId])
+  @@index([projectId])
+  @@index([repositoryId])
 }
 
 
-// =========================
+// =====================================================
 // AI AGENT RUN
-// =========================
+// =====================================================
 
 model AgentRun {
   id          String         @id @default(cuid())
+
   status      AgentRunStatus @default(PENDING)
+
+  // Current agent execution information
+  branchName  String?
+  currentStep String?
+  progress    Int            @default(0)
 
   startedAt   DateTime?
   completedAt DateTime?
@@ -135,22 +161,26 @@ model AgentRun {
 
   steps       AgentStep[]
   fileChanges FileChange[]
+  testRuns    TestRun[]
+
+  @@index([taskId])
 }
 
 
-// =========================
+// =====================================================
 // AI AGENT STEP
-// =========================
+// =====================================================
 
 model AgentStep {
   id          String         @id @default(cuid())
-  stepNumber  Int
 
+  stepNumber  Int
   type        AgentStepType
   status      StepStatus     @default(PENDING)
 
   description String?
 
+  // Agent input/output
   input       Json?
   output      Json?
   error       String?
@@ -164,37 +194,72 @@ model AgentStep {
   agentRun    AgentRun       @relation(fields: [agentRunId], references: [id], onDelete: Cascade)
 
   @@unique([agentRunId, stepNumber])
+  @@index([agentRunId])
 }
 
 
-// =========================
+// =====================================================
 // FILE CHANGES
-// =========================
+// =====================================================
 
 model FileChange {
   id          String     @id @default(cuid())
+
   filePath    String
   changeType  ChangeType
 
   additions   Int        @default(0)
   deletions   Int        @default(0)
 
+  // Git diff generated by the AI agent
   diff        String?
 
   createdAt   DateTime   @default(now())
 
   agentRunId  String
   agentRun    AgentRun   @relation(fields: [agentRunId], references: [id], onDelete: Cascade)
+
+  @@index([agentRunId])
 }
 
 
-// =========================
+// =====================================================
+// TEST RUN
+// =====================================================
+
+model TestRun {
+  id          String         @id @default(cuid())
+
+  status      TestRunStatus
+
+  command     String?
+  output      String?
+  error       String?
+
+  totalTests  Int            @default(0)
+  passedTests Int            @default(0)
+  failedTests Int            @default(0)
+
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  createdAt   DateTime       @default(now())
+
+  agentRunId  String
+  agentRun    AgentRun       @relation(fields: [agentRunId], references: [id], onDelete: Cascade)
+
+  @@index([agentRunId])
+}
+
+
+// =====================================================
 // PULL REQUEST
-// =========================
+// =====================================================
 
 model PullRequest {
   id           String     @id @default(cuid())
 
+  // GitHub PR information
   githubId     String     @unique
   number       Int
   title        String
@@ -213,12 +278,14 @@ model PullRequest {
   repository   Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
 
   @@unique([repositoryId, number])
+  @@index([taskId])
+  @@index([repositoryId])
 }
 
 
-// =========================
+// =====================================================
 // ENUMS
-// =========================
+// =====================================================
 
 enum TaskStatus {
   PENDING
@@ -268,6 +335,12 @@ enum ChangeType {
   CREATED
   MODIFIED
   DELETED
+}
+
+enum TestRunStatus {
+  RUNNING
+  PASSED
+  FAILED
 }
 
 enum PRStatus {
