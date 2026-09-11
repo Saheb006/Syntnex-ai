@@ -1,0 +1,25 @@
+require("dotenv").config();
+
+const app = require("./app");
+const prisma = require("./config/db");
+
+const PORT = process.env.PORT || 5000;
+
+async function startServer() {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+
+    console.log("✅ PostgreSQL connected successfully!");
+
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running on http://localhost:${PORT}`);
+    });
+  } catch (error) {
+    console.error("❌ Failed to connect to PostgreSQL:");
+    console.error(error.message);
+
+    process.exit(1);
+  }
+}
+
+startServer();

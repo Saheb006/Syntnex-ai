@@ -1,0 +1,277 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+
+// =========================
+// USER & AUTHENTICATION
+// =========================
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String?  @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  accounts Account[]
+  projects Project[]
+  tasks    Task[]
+}
+
+model Account {
+  id                String   @id @default(cuid())
+  provider          String
+  providerAccountId String
+
+  accessToken       String?
+  refreshToken      String?
+  expiresAt         DateTime?
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+
+// =========================
+// PROJECT
+// =========================
+
+model Project {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  repositories Repository[]
+  tasks        Task[]
+}
+
+
+// =========================
+// GITHUB REPOSITORY
+// =========================
+
+model Repository {
+  id            String   @id @default(cuid())
+  name          String
+  fullName      String
+  githubId      String   @unique
+  url           String
+  defaultBranch String   @default("main")
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  projectId     String
+  project       Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  tasks         Task[]
+  pullRequests  PullRequest[]
+
+  @@unique([projectId, fullName])
+}
+
+
+// =========================
+// TASK
+// =========================
+
+model Task {
+  id           String       @id @default(cuid())
+  title        String
+  description  String?
+
+  status       TaskStatus   @default(PENDING)
+  priority     TaskPriority @default(MEDIUM)
+
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  userId       String
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  projectId    String
+  project      Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  repositoryId String
+  repository   Repository   @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+
+  agentRuns    AgentRun[]
+  pullRequests PullRequest[]
+}
+
+
+// =========================
+// AI AGENT RUN
+// =========================
+
+model AgentRun {
+  id          String         @id @default(cuid())
+  status      AgentRunStatus @default(PENDING)
+
+  startedAt   DateTime?
+  completedAt DateTime?
+  error       String?
+
+  createdAt   DateTime       @default(now())
+
+  taskId      String
+  task        Task           @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  steps       AgentStep[]
+  fileChanges FileChange[]
+}
+
+
+// =========================
+// AI AGENT STEP
+// =========================
+
+model AgentStep {
+  id          String         @id @default(cuid())
+  stepNumber  Int
+
+  type        AgentStepType
+  status      StepStatus     @default(PENDING)
+
+  description String?
+
+  input       Json?
+  output      Json?
+  error       String?
+
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  createdAt   DateTime       @default(now())
+
+  agentRunId  String
+  agentRun    AgentRun       @relation(fields: [agentRunId], references: [id], onDelete: Cascade)
+
+  @@unique([agentRunId, stepNumber])
+}
+
+
+// =========================
+// FILE CHANGES
+// =========================
+
+model FileChange {
+  id          String     @id @default(cuid())
+  filePath    String
+  changeType  ChangeType
+
+  additions   Int        @default(0)
+  deletions   Int        @default(0)
+
+  diff        String?
+
+  createdAt   DateTime   @default(now())
+
+  agentRunId  String
+  agentRun    AgentRun   @relation(fields: [agentRunId], references: [id], onDelete: Cascade)
+}
+
+
+// =========================
+// PULL REQUEST
+// =========================
+
+model PullRequest {
+  id           String     @id @default(cuid())
+
+  githubId     String     @unique
+  number       Int
+  title        String
+  url          String
+  branchName   String
+
+  status       PRStatus   @default(OPEN)
+
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  taskId       String
+  task         Task       @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  repositoryId String
+  repository   Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+
+  @@unique([repositoryId, number])
+}
+
+
+// =========================
+// ENUMS
+// =========================
+
+enum TaskStatus {
+  PENDING
+  PLANNING
+  IN_PROGRESS
+  TESTING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum AgentRunStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum AgentStepType {
+  ANALYZE
+  PLAN
+  READ_FILE
+  WRITE_FILE
+  EDIT_FILE
+  RUN_TEST
+  FIX_ERROR
+  CREATE_BRANCH
+  CREATE_PR
+}
+
+enum StepStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+enum ChangeType {
+  CREATED
+  MODIFIED
+  DELETED
+}
+
+enum PRStatus {
+  OPEN
+  MERGED
+  CLOSED
+}
