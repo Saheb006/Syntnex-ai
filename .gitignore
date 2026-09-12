@@ -2,6 +2,10 @@
 node_modules/
 .pnpm-store/
 
+# Optional local server skills
+server/.agents/
+
+
 # Environment variables
 .env
 .env.*
