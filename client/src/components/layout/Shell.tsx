@@ -1,10 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { Settings, Menu, X, FolderGit2, ChevronDown, Bell, Search, MoreHorizontal } from 'lucide-react'
+import { Settings, Menu, X, FolderGit2, ChevronDown, Bell, Search, MoreHorizontal, LogOut } from 'lucide-react'
 import { Logo } from './Logo'
 import { nav } from '@/data/mockData'
 import type { Page } from '@/types'
+import { useAuth } from '@/hooks/useAuth'
 
 interface ShellProps {
   page: Page
@@ -14,6 +15,7 @@ interface ShellProps {
 
 export function Shell({ page, setPage, children }: ShellProps) {
   const [mobile, setMobile] = useState(false)
+  const { user, isAuthenticated, logout } = useAuth()
 
   return (
     <div className="min-h-screen bg-background">
@@ -56,13 +58,32 @@ export function Shell({ page, setPage, children }: ShellProps) {
             Settings
           </button>
           <div className="mt-3 flex items-center gap-3 border-t border-border pt-4">
-            <div className="grid size-8 place-items-center rounded-full bg-secondary text-xs font-semibold">
-              DV
-            </div>
-            <div>
-              <p className="text-xs font-medium">Developer</p>
-              <p className="text-[11px] text-muted-foreground">Free Plan</p>
-            </div>
+            {isAuthenticated && user ? (
+              <>
+                <img
+                  src={`https://github.com/${user.username}.png`}
+                  alt={user.username}
+                  className="size-8 rounded-full"
+                />
+                <div className="flex-1">
+                  <p className="text-xs font-medium">{user.username}</p>
+                  <p className="text-[11px] text-muted-foreground">Free Plan</p>
+                </div>
+                <button onClick={logout} className="text-muted-foreground hover:text-foreground">
+                  <LogOut className="size-4" />
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="grid size-8 place-items-center rounded-full bg-secondary text-xs font-semibold">
+                  DV
+                </div>
+                <div>
+                  <p className="text-xs font-medium">Developer</p>
+                  <p className="text-[11px] text-muted-foreground">Free Plan</p>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </aside>

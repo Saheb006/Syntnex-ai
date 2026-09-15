@@ -124,17 +124,8 @@ async function handleGitHubCallback(req, res) {
     console.log(`📦 Repositories synced: ${repositories.length}`);
     console.log(`🔐 Syntnex AI session created`);
 
-    return res.json({
-      message: "GitHub authentication successful",
-      user: {
-        id: user.id,
-        githubId: String(githubUser.id),
-        username: githubUser.login,
-      },
-      repositories: {
-        count: repositories.length,
-      },
-    });
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    return res.redirect(`${frontendUrl}?username=${githubUser.login}&login=success`);
   } catch (error) {
     console.error("GitHub callback error:", error);
 

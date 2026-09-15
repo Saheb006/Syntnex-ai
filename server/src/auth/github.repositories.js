@@ -58,6 +58,8 @@ async function syncGitHubRepositories(userId, repositories) {
         fullName: repository.full_name,
         url: repository.html_url,
         defaultBranch: repository.default_branch || "main",
+        language: repository.language || null,
+        stars: repository.stargazers_count || 0,
         userId,
       },
       create: {
@@ -66,6 +68,8 @@ async function syncGitHubRepositories(userId, repositories) {
         fullName: repository.full_name,
         url: repository.html_url,
         defaultBranch: repository.default_branch || "main",
+        language: repository.language || null,
+        stars: repository.stargazers_count || 0,
         userId,
       },
     });

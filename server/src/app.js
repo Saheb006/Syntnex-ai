@@ -4,6 +4,7 @@ const helmet = require("helmet");
 const cookieParser = require("cookie-parser");
 
 const authRoutes = require("./routes/auth.routes");
+const repositoryRoutes = require("./routes/repository.routes");
 
 const app = express();
 
@@ -25,6 +26,9 @@ app.use(cookieParser());
 
 // Authentication routes
 app.use("/api/auth", authRoutes);
+
+// Repository routes
+app.use("/api/repositories", repositoryRoutes);
 
 app.get("/", (req, res) => {
   res.json({

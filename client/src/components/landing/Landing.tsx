@@ -1,21 +1,18 @@
 'use client'
 
-import { ArrowRight, Sparkles, ShieldCheck, Zap, Code2, Bot, Database, Lock, TestTube2, GitBranch, Cpu, Globe } from 'lucide-react'
+import { ArrowRight, Sparkles, ShieldCheck, Zap, Code2, Bot, Database, Lock, TestTube2, GitBranch, Cpu, Globe, LogOut } from 'lucide-react'
 import { SimpleButton } from '@/components/ui/SimpleButton'
 import { Badge } from '@/components/ui/Badge'
 import { Logo } from '@/components/layout/Logo'
 import { AgentPreview } from './AgentPreview'
+import { useAuth } from '@/hooks/useAuth'
 
 interface LandingProps {
   start: () => void
-  onLogin?: () => void
 }
 
-export function Landing({ start, onLogin }: LandingProps) {
-  const handleLogin = () => {
-    if (onLogin) return onLogin()
-    window.location.href = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/auth/github`
-  }
+export function Landing({ start }: LandingProps) {
+  const { user, isAuthenticated, isLoading, login, logout } = useAuth()
 
   return (
     <main className="min-h-screen bg-background px-5 py-6">
@@ -28,12 +25,37 @@ export function Landing({ start, onLogin }: LandingProps) {
             <a href="#security">Security</a>
           </div>
           <div className="flex items-center gap-3">
-            <SimpleButton onClick={handleLogin} variant="ghost">
-              Log in
-            </SimpleButton>
-            <SimpleButton onClick={start} variant="outline">
-              Open workspace <ArrowRight className="size-4" />
-            </SimpleButton>
+            {isLoading ? (
+              <div className="flex items-center gap-3">
+                <div className="size-8 animate-pulse rounded-full bg-secondary" />
+              </div>
+            ) : isAuthenticated && user ? (
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 rounded-lg bg-secondary px-3 py-2">
+                  <img
+                    src={`https://github.com/${user.username}.png`}
+                    alt={user.username}
+                    className="size-6 rounded-full"
+                  />
+                  <span className="text-sm font-medium">{user.username}</span>
+                </div>
+                <button onClick={logout} className="text-muted-foreground hover:text-foreground">
+                  <LogOut className="size-4" />
+                </button>
+                <SimpleButton onClick={start} variant="outline">
+                  Open workspace <ArrowRight className="size-4" />
+                </SimpleButton>
+              </div>
+            ) : (
+              <>
+                <SimpleButton onClick={login} variant="ghost">
+                  Log in
+                </SimpleButton>
+                <SimpleButton onClick={start} variant="outline">
+                  Open workspace <ArrowRight className="size-4" />
+                </SimpleButton>
+              </>
+            )}
           </div>
         </header>
 
