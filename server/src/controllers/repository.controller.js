@@ -5,6 +5,78 @@ const {
   syncGitHubRepositories,
 } = require("../auth/github.repositories");
 
+const GITHUB_BRANCHES_URL = "https://api.github.com/repos";
+
+/**
+ * Get branches for a specific repository
+ */
+async function getRepositoryBranches(req, res) {
+  try {
+    const { fullName } = req.params;
+
+    if (!fullName) {
+      return res.status(400).json({
+        message: "Repository full name is required",
+      });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: {
+        id: req.userId,
+      },
+      include: {
+        accounts: true,
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found",
+      });
+    }
+
+    const githubAccount = user.accounts.find(
+      (acc) => acc.provider === "github"
+    );
+
+    if (!githubAccount || !githubAccount.accessToken) {
+      return res.status(400).json({
+        message: "GitHub account not connected",
+      });
+    }
+
+    const response = await fetch(
+      `${GITHUB_BRANCHES_URL}/${fullName}/branches`,
+      {
+        headers: {
+          Accept: "application/vnd.github+json",
+          Authorization: `Bearer ${githubAccount.accessToken}`,
+          "X-GitHub-Api-Version": "2022-11-28",
+        },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch repository branches");
+    }
+
+    const branches = await response.json();
+
+    return res.json({
+      branches: branches.map((branch) => ({
+        name: branch.name,
+        commit: branch.commit.sha,
+        protected: branch.protected,
+      })),
+    });
+  } catch (error) {
+    console.error("Get repository branches error:", error);
+    return res.status(500).json({
+      message: "Failed to fetch repository branches",
+    });
+  }
+}
+
 /**
  * Get all repositories for the authenticated user
  */
@@ -97,4 +169,5 @@ async function syncRepositories(req, res) {
 module.exports = {
   getUserRepositories,
   syncRepositories,
+  getRepositoryBranches,
 };

@@ -12,6 +12,12 @@ export interface Repository {
   updatedAt: string
 }
 
+export interface Branch {
+  name: string
+  commit: string
+  protected: boolean
+}
+
 export interface RepositoryResponse {
   repositories: Repository[]
 }
@@ -51,6 +57,24 @@ export class RepositoryService {
     } catch (error) {
       console.error('Failed to sync repositories:', error)
       throw error
+    }
+  }
+
+  static async getRepositoryBranches(fullName: string): Promise<Branch[]> {
+    try {
+      const response = await fetch(`${API_URL}/api/repositories/${encodeURIComponent(fullName)}/branches`, {
+        credentials: 'include',
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch repository branches')
+      }
+
+      const data = await response.json()
+      return data.branches
+    } catch (error) {
+      console.error('Failed to fetch repository branches:', error)
+      return []
     }
   }
 }
